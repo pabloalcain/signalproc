@@ -1,7 +1,5 @@
 /* 
- * tcl interface for the specden plugin 
- * 
- * Copyright (c) 2006-2009 akohlmey@cmm.chem.upenn.edu
+ * main routine to interface with the VMD specden plugin 
  */
 
 #include <stdio.h>
@@ -9,9 +7,6 @@
 #include <stdlib.h>
 #include "specden.h"
 
-/* this is the actual interface to the 'specden' command.
- * it parses the arguments, calls the calculation subroutine
- * and then passes the result to the interpreter. */
 int main(int argc, char *argv[]) 
 {
   FILE *fp;
@@ -72,10 +67,11 @@ int main(int argc, char *argv[])
   }
   
   nn=calc_specden(ndat, input, output, normtype, specr, maxfreq, deltat, temp);
-  
+
   fp = fopen("output.dat", "w");
+  if (!fp) fprintf(stderr, "Could not open file output.dat");
   for (i = 1; i < nn; i++) {
-    fprintf(fp, "%g, %g", output[2*i], output[2*i+1]);
+    fprintf(fp, "%g %g\n", output[2*i], output[2*i+1]);
   }
   fclose(fp);
   

@@ -1,6 +1,6 @@
 CC=gcc
 LD_FLAGS=-lm
-CC_FLAGS=-O3 -Wall -pedantic -Wextra
+CC_FLAGS=-O0 -g -Wall -pedantic -Wextra
 OBJS=main.o specden.o kiss_fft.o
 
 default: specden.x
