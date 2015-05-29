@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 
   avg[0]=avg[1]=avg[2]=0.0;
   for (i=0; i<ndat; i++) {
-    n = fscanf(fp, "%lf, %lf, %lf\n", &x, &y, &z);
+    n = fscanf(fp, "%lf %lf %lf\n", &x, &y, &z);
     if (n != 3) 
       fprintf(stderr, "Wrong format in file %s", argv[1]);
     input[3*i+0] = x;
