@@ -39,7 +39,11 @@ int main(int argc, char *argv[])
 
   /* size of output data */
   nn = (int) ((double)ndat)*maxfreq/219474.0*deltat/(2.0*M_PI);
-
+  
+  if (nn < 1) {
+    fprintf(stderr, "Check input file, no data generated!\n");
+  }
+  
   input = (double *) malloc(3 * ndat * sizeof(double));
   output = (double *) malloc(2 * nn * sizeof(double));
 
