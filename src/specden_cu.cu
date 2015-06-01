@@ -138,7 +138,7 @@ int calc_specden(const int ndat, double *input, double *output,
     
   /* alloc and copy array to device */
 
-  bytes = (nn + 2)*3*sizeof(double);
+  bytes = (ndat + 2)*3*sizeof(double);
   cudaMalloc((void **) &cu_input, bytes);
   cudaMemcpy(cu_input, input, bytes, cudaMemcpyHostToDevice);
   
@@ -215,7 +215,7 @@ __global__ void window(double* cu_input, int ndat) {
   idx = blockDim.x * blockIdx.x + threadIdx.x;
   double win;
   
-  if (idx < ndat+2) {
+  if (idx != 0 && idx < ndat+2) {
     win=((double)(2*idx-ndat-1))/((double)(ndat+1));
     win=1.0-win*win;
     cu_input[3*idx]   *=win;
@@ -227,19 +227,19 @@ __global__ void window(double* cu_input, int ndat) {
 __global__ void compute(double *cu_input, int ndat, int nn, int specr, double dt, double *cu_ftrans, double *cu_wtrans){
   
   /* So far threadIdx.x will always be 0. The usefulness of this will
-     depende on how much we want to average the signal */
+     depend on how much we want to average the signal */
 
+  __shared__ float c[1024];
   int i; /* This index runs over the nn data */
   int k; /* This one runs over the "averaging" */
   double f, s, e;
   i = blockDim.x * blockIdx.x + threadIdx.x;
   k = blockDim.y * blockIdx.y + threadIdx.y;
-  
+
   if (i < nn+1) {
     cmplx f1,f2,f3;
-    
+
     double t = 2.0*((double)(i*specr))*M_PI/((double)(ndat+1));
-    double c = 0.0;
     
     if (k < specr) {
 
@@ -266,10 +266,16 @@ __global__ void compute(double *cu_input, int ndat, int nn, int specr, double dt
         e=pow(1.0-(s*s)/6.0+(s*s*s*s)/120.0,4.0);
       }
       e = e*3.0/(1.0+2.0*cos(s)*cos(s));
-      c = c+e*e*f;
+      c[k] = e*e*f;
     }
     
+    for (int s=blockDim.y/2; s>0; s>>=1) {
+      if (threadIdx.y < s) {
+        c[threadIdx.y] += c[threadIdx.y + s];
+      }
+      __syncthreads();
+    }
     cu_wtrans[1+i] = t+0.5*dt*((double)(specr-1));
-    cu_ftrans[1+i] = c;
+    cu_ftrans[1+i] = c[0];
   }
 }
