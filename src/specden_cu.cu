@@ -98,8 +98,8 @@ int calc_specden(const int ndat, double *input, double *output,
                  const int normtype, const int specr, 
                  const double maxfreq, const double deltat, const double temp) 
 {
-  int    nn, i, k;
-  double wave_fac, bh, dt, t, c, f, s, e;
+  int    nn, i;
+  double wave_fac, bh, dt, t, f, e;
 
   double *cu_ftrans, *cu_wtrans, *cu_input;
   double *ftrans, *wtrans;
