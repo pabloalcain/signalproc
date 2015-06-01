@@ -102,6 +102,7 @@ int calc_specden(const int ndat, double *input, double *output,
   double wave_fac, bh, dt, t, c, f, s, e;
 
   double *cu_ftrans, *cu_wtrans, *cu_input;
+  double *ftrans, *wtrans;
   double norm_fourier, norm_classic, norm_kubo, norm_harmonic, norm_schofield;
 
   int bytes;
@@ -149,53 +150,58 @@ int calc_specden(const int ndat, double *input, double *output,
   window<<<nblocks, TPB>>>(cu_input, ndat);
   compute<<<grid, block>>>(cu_input, ndat, nn, specr, dt, cu_ftrans, cu_wtrans);
   
+  ftrans = (double *) malloc((nn+2)*sizeof(double));
+  wtrans = (double *) malloc((nn+2)*sizeof(double));
+
+  cudaMemcpy(ftrans, cu_ftrans, (nn+2)*sizeof(double), cudaMemcpyDeviceToHost);
+  cudaMemcpy(wtrans, cu_wtrans, (nn+2)*sizeof(double), cudaMemcpyDeviceToHost);
   /* compute norm */
-  /* norm_fourier=norm_classic=norm_kubo=norm_harmonic=norm_schofield=0.0; */
-  /* for (i=0; i<=nn; ++i) { */
-  /*   t = wtrans[1+i]; */
-  /*   f = ftrans[1+i]; */
-  /*   e = t*(1.0 - exp(-bh*t)); */
+  norm_fourier=norm_classic=norm_kubo=norm_harmonic=norm_schofield=0.0;
+  for (i=0; i<=nn; ++i) {
+    t = wtrans[1+i];
+    f = ftrans[1+i];
+    e = t*(1.0 - exp(-bh*t));
     
-  /*   norm_fourier  += f; */
-  /*   norm_classic  += f*e; */
-  /*   norm_kubo     += f*e/(1.0+exp(-bh*t)); */
-  /*   norm_harmonic += f*t*t; */
-  /*   norm_schofield += f*e*exp(0.5*bh*t); */
-  /* } */
-  /* norm_fourier  = 1.0/norm_fourier; */
-  /* norm_classic  = 1.0/norm_classic; */
-  /* norm_kubo     = 1.0/norm_kubo; */
-  /* norm_harmonic = 1.0/norm_harmonic; */
-  /* norm_schofield = 1.0/norm_schofield; */
+    norm_fourier  += f;
+    norm_classic  += f*e;
+    norm_kubo     += f*e/(1.0+exp(-bh*t));
+    norm_harmonic += f*t*t;
+    norm_schofield += f*e*exp(0.5*bh*t);
+  }
+  norm_fourier  = 1.0/norm_fourier;
+  norm_classic  = 1.0/norm_classic;
+  norm_kubo     = 1.0/norm_kubo;
+  norm_harmonic = 1.0/norm_harmonic;
+  norm_schofield = 1.0/norm_schofield;
 
-  /* /\* output *\/ */
-  /* for (i=0; i<=nn; ++i) { */
-  /*   t = wtrans[1+i]; */
-  /*   f = ftrans[1+i]; */
-  /*   e = t*(1.0 - exp(-bh*t)); */
+  /* output */
+  for (i=0; i<=nn; ++i) {
+    t = wtrans[1+i];
+    f = ftrans[1+i];
+    e = t*(1.0 - exp(-bh*t));
 
-  /*   output[2*i] = wave_fac*t; */
-  /*   switch (normtype) { */
-  /*     case NORM_FOURIER: */
-  /*        output[2*i+1] = norm_fourier*f; */
-  /*        break; */
-  /*     case NORM_CLASSIC: */
-  /*        output[2*i+1] = norm_classic *f*e; */
-  /*        break; */
-  /*     case NORM_KUBO: */
-  /*        output[2*i+1] = norm_kubo*f*e/(1.0+exp(-bh*t)); */
-  /*        break; */
-  /*     case NORM_HARMONIC: */
-  /*        output[2*i+1] = norm_harmonic*f*t*t; */
-  /*        break; */
-  /*     case NORM_SCHOFIELD: */
-  /*        output[2*i+1] = norm_schofield*f*e*exp(0.5*bh*t); */
-  /*        break; */
-  /*     default: */
-  /*        fprintf(stderr, "specden: unknown normalization. %d\n", normtype); */
-  /*        return -200; */
-  /*   } */
-  /* } */
+    output[2*i] = wave_fac*t;
+    switch (normtype) {
+      case NORM_FOURIER:
+         output[2*i+1] = norm_fourier*f;
+         break;
+      case NORM_CLASSIC:
+         output[2*i+1] = norm_classic *f*e;
+         break;
+      case NORM_KUBO:
+         output[2*i+1] = norm_kubo*f*e/(1.0+exp(-bh*t));
+         break;
+      case NORM_HARMONIC:
+         output[2*i+1] = norm_harmonic*f*t*t;
+         break;
+      case NORM_SCHOFIELD:
+         output[2*i+1] = norm_schofield*f*e*exp(0.5*bh*t);
+         break;
+      default:
+         fprintf(stderr, "specden: unknown normalization. %d\n", normtype);
+         return -200;
+    }
+  }
   return nn;
 }
 
