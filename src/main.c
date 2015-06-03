@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
   for (i=0; i<ndat; i++) {
     n = fscanf(fp, "%lf %lf %lf\n", &x, &y, &z);
     if (n != 3) 
-      fprintf(stderr, "Wrong format in file %s", argv[1]);
+      fprintf(stderr, "Wrong format in file %s:%d", argv[1], i+1);
     input[3*i+0] = x;
     input[3*i+1] = y;
     input[3*i+2] = z;

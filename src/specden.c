@@ -42,7 +42,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 #include "specden.h"
+
+/* compute high precision walltime and walltime difference */
+static double wallclock(const double * ref)
+{
+  struct timespec t;
+  double ret;
+
+  clock_gettime(CLOCK_REALTIME, &t);
+  ret = ((double) t.tv_sec)*1.0e6 + 1.0e-3*((double) t.tv_nsec);
+
+  return ref ? (ret - *ref) : ret;
+}
+
+
 
 typedef union {double re; double im;} cmplx;
 
@@ -134,6 +149,10 @@ int calc_specden(const int ndat, double *input, double *output,
   }
 
   /* read data and apply windowing function */
+  double secs;
+
+  secs = wallclock(NULL);
+
 #if defined(_OPENMP)
 #pragma omp parallel for private(i) schedule(static)
 #endif
@@ -151,6 +170,7 @@ int calc_specden(const int ndat, double *input, double *output,
   input[3*ndat+5] = 0.0;
   
   dt = 2.0*specr*M_PI/((ndat+1)*specr);
+
 #if defined(_OPENMP)
 #pragma omp parallel for private(i,k,t,c,f,s,e) schedule(static)
 #endif
@@ -191,6 +211,7 @@ int calc_specden(const int ndat, double *input, double *output,
     wtrans[1+i] = t+0.5*dt*((double)(specr-1));
     ftrans[1+i] = c;
   }
+  printf("Time computing: %g\n", wallclock(&secs)/1e9);
 
   /* compute norm */
   norm_fourier=norm_classic=norm_kubo=norm_harmonic=norm_schofield=0.0;

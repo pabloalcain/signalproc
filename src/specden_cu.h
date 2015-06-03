@@ -25,7 +25,7 @@ extern int calc_specden(const int ndat, double *input, double *output,
                         const int normtype, const int specr, 
                         const double maxfreq, const double deltat, 
                         const double temp);
-
+  
 extern double *calc_sgsmooth(const int ndat, double *input,
                              const int window, const int order);
 

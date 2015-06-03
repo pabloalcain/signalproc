@@ -1,8 +1,8 @@
 CC=gcc
 CUDA=nvcc
-LD_FLAGS=-lm
-CC_FLAGS=-O0 -g -Wall -pedantic -Wextra
-CUDA_FLAGS=-O0 -g -arch=sm_35
+LD_FLAGS=-lm -lrt
+CC_FLAGS=-O3 -g -Wall -pedantic -Wextra
+CUDA_FLAGS=-O3 -g -arch=sm_35
 CUDA_LD_FLAGS=-lcudart -lcudadevrt
 OBJS=main.o specden.o
 

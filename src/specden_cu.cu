@@ -42,7 +42,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 #include "specden_cu.h"
+
+/* compute high precision walltime and walltime difference */
+static double wallclock(const double * ref)
+{
+  struct timespec t;
+  double ret;
+
+  clock_gettime(CLOCK_REALTIME, &t);
+  ret = ((double) t.tv_sec)*1.0e6 + 1.0e-3*((double) t.tv_nsec);
+
+  return ref ? (ret - *ref) : ret;
+}
+
+
 
 typedef union {double re; double im;} cmplx;
 
@@ -107,6 +122,10 @@ int calc_specden(const int ndat, double *input, double *output,
 
   int bytes;
 
+
+  double secs;
+
+  secs = wallclock(NULL);
   wave_fac = 219474.0/deltat;
   bh       = 1.05459e-34/1.38066e-23/2.41889e-17/deltat/temp;
   
@@ -140,15 +159,26 @@ int calc_specden(const int ndat, double *input, double *output,
 
   bytes = (ndat + 2)*3*sizeof(double);
   cudaMalloc((void **) &cu_input, bytes);
+  cudaDeviceSynchronize();
+  printf("Time initializing: %gs\n", wallclock(&secs)/1e9);
+
+    
+  secs = wallclock(NULL);
   cudaMemcpy(cu_input, input, bytes, cudaMemcpyHostToDevice);
-  
+  cudaDeviceSynchronize();
+  printf("Time copying: %gs\n", wallclock(&secs)/1e9);
+
   /* compute */
   int nblocks = ndat/TPB + 1;
-  dim3 grid((nn+2), specr/TPB + 1);
-  dim3 block(1, TPB);
+  
+  dim3 grid((nn+2), 1);
+  dim3 block(8, TPB);
 
+  secs = wallclock(NULL);
   window<<<nblocks, TPB>>>(cu_input, ndat);
   compute<<<grid, block>>>(cu_input, ndat, nn, specr, dt, cu_ftrans, cu_wtrans);
+  cudaDeviceSynchronize();
+  printf("Time computing: %g\n", wallclock(&secs)/1e9);
   
   ftrans = (double *) malloc((nn+2)*sizeof(double));
   wtrans = (double *) malloc((nn+2)*sizeof(double));
@@ -229,7 +259,7 @@ __global__ void compute(double *cu_input, int ndat, int nn, int specr, double dt
   /* So far threadIdx.x will always be 0. The usefulness of this will
      depend on how much we want to average the signal */
 
-  __shared__ float c[1024];
+  __shared__ float c[TPB];
   int i; /* This index runs over the nn data */
   int k; /* This one runs over the "averaging" */
   double f, s, e;
@@ -237,7 +267,7 @@ __global__ void compute(double *cu_input, int ndat, int nn, int specr, double dt
   k = blockDim.y * blockIdx.y + threadIdx.y;
 
   if (i < nn+1) {
-    cmplx f1,f2,f3;
+    cmplx f1;//,f2,f3;
 
     double t = 2.0*((double)(i*specr))*M_PI/((double)(ndat+1));
     
@@ -245,14 +275,22 @@ __global__ void compute(double *cu_input, int ndat, int nn, int specr, double dt
 
       /* sum over all three dimensions */
       fourier_sum(ndat,(cu_input+0), t+(double)k*dt, &f1);
-      fourier_sum(ndat,(cu_input+1), t+(double)k*dt, &f2);
-      fourier_sum(ndat,(cu_input+2), t+(double)k*dt, &f3);
       f = f1.re*f1.re;
+      f += f1.im*f1.im;
+      fourier_sum(ndat,(cu_input+1), t+(double)k*dt, &f1);
+      f += f1.re*f1.re;
+      f += f1.im*f1.im;
+      fourier_sum(ndat,(cu_input+2), t+(double)k*dt, &f1);
+      f += f1.re*f1.re;
+      f += f1.im*f1.im;
+
+
+      /*    f = f1.re*f1.re;
       f += f1.im*f1.im;
       f += f2.re*f2.re;
       f += f2.im*f2.im;
       f += f3.re*f3.re;
-      f += f3.im*f3.im;
+      f += f3.im*f3.im; */
       
       /* input data should have zero mean... */
       if (i+k == 0) f=0.0;
@@ -267,6 +305,7 @@ __global__ void compute(double *cu_input, int ndat, int nn, int specr, double dt
       }
       e = e*3.0/(1.0+2.0*cos(s)*cos(s));
       c[k] = e*e*f;
+      c[k] = f;
     }
     
     for (int s=blockDim.y/2; s>0; s>>=1) {
