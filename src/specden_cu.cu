@@ -160,25 +160,25 @@ int calc_specden(const int ndat, double *input, double *output,
   bytes = (ndat + 2)*3*sizeof(double);
   cudaMalloc((void **) &cu_input, bytes);
   cudaDeviceSynchronize();
-  printf("Time initializing: %gs\n", wallclock(&secs)/1e9);
+  printf("Time initializing: %gs\n", wallclock(&secs)/1e6);
 
     
   secs = wallclock(NULL);
   cudaMemcpy(cu_input, input, bytes, cudaMemcpyHostToDevice);
   cudaDeviceSynchronize();
-  printf("Time copying: %gs\n", wallclock(&secs)/1e9);
+  printf("Time copying: %gs\n", wallclock(&secs)/1e6);
 
   /* compute */
   int nblocks = ndat/TPB + 1;
   
   dim3 grid((nn+2), 1);
-  dim3 block(8, TPB);
+  dim3 block(1, TPB);
 
   secs = wallclock(NULL);
   window<<<nblocks, TPB>>>(cu_input, ndat);
   compute<<<grid, block>>>(cu_input, ndat, nn, specr, dt, cu_ftrans, cu_wtrans);
   cudaDeviceSynchronize();
-  printf("Time computing: %g\n", wallclock(&secs)/1e9);
+  printf("Time computing: %g\n", wallclock(&secs)/1e6);
   
   ftrans = (double *) malloc((nn+2)*sizeof(double));
   wtrans = (double *) malloc((nn+2)*sizeof(double));

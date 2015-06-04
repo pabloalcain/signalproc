@@ -211,7 +211,7 @@ int calc_specden(const int ndat, double *input, double *output,
     wtrans[1+i] = t+0.5*dt*((double)(specr-1));
     ftrans[1+i] = c;
   }
-  printf("Time computing: %g\n", wallclock(&secs)/1e9);
+  printf("Time computing: %g\n", wallclock(&secs)/1e6);
 
   /* compute norm */
   norm_fourier=norm_classic=norm_kubo=norm_harmonic=norm_schofield=0.0;
